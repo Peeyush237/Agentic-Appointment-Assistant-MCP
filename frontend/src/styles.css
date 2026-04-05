@@ -1,0 +1,121 @@
+:root {
+  --bg: #f7f6f2;
+  --card: #fff9eb;
+  --ink: #1f2a37;
+  --accent: #0e7490;
+  --accent-soft: #cffafe;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 10% 10%, #fff2cc 0%, transparent 35%),
+    radial-gradient(circle at 90% 30%, #d9f99d 0%, transparent 30%),
+    var(--bg);
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+header h1 {
+  margin-bottom: 4px;
+}
+
+.roleToggle {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.roleToggle button,
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  background: #d1d5db;
+}
+
+.roleToggle button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.panel {
+  background: var(--card);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  padding: 16px;
+}
+
+.hint {
+  color: #475569;
+  margin-top: 0;
+}
+
+.chatWindow {
+  min-height: 320px;
+  max-height: 420px;
+  overflow: auto;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.bubble {
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.bubble.user {
+  background: var(--accent-soft);
+}
+
+.bubble.assistant {
+  background: #f8fafc;
+}
+
+.composer {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+pre {
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.quickActions {
+  margin-top: 10px;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 12px;
+  }
+
+  .composer {
+    grid-template-columns: 1fr;
+  }
+}

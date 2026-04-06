@@ -1,5 +1,7 @@
 from pathlib import Path
+import os
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,6 +45,26 @@ class Settings(BaseSettings):
 
     default_doctor_login_email: str = "doctor@clinic.local"
     default_doctor_login_password: str = "doctor123"
+
+    @model_validator(mode="after")
+    def _normalize_and_validate_database_url(self):
+        url = (self.database_url or "").strip()
+        if url.startswith("postgres://"):
+            # Render/Heroku-style URL; SQLAlchemy + psycopg expects postgresql+psycopg.
+            url = "postgresql+psycopg://" + url[len("postgres://") :]
+        elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
+            # Some providers expose postgresql:// URL without an explicit DBAPI driver.
+            url = "postgresql+psycopg://" + url[len("postgresql://") :]
+
+        is_render = (os.getenv("RENDER") or "").lower() in {"true", "1", "yes"}
+        if is_render and (not url or "localhost" in url or "127.0.0.1" in url):
+            raise ValueError(
+                "DATABASE_URL is not configured for Render. Set it to your Render PostgreSQL internal URL "
+                "(postgresql+psycopg://...@...:5432/...)."
+            )
+
+        self.database_url = url
+        return self
 
 
 settings = Settings()

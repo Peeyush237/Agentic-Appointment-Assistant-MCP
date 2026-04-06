@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
+from urllib.parse import urlparse, urlunparse
 
+from pydantic import Field
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,7 +15,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Appointment MCP Tracker"
     app_host: str = "127.0.0.1"
-    app_port: int = 8000
+    app_port: int = Field(default=8000, validation_alias="PORT")
     frontend_origin: str = "http://localhost:5173"
 
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/appointment_mcp"
@@ -23,7 +25,7 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4.1-mini"
     openai_max_tokens: int = 1200
 
-    mcp_server_url: str = "http://127.0.0.1:8000/mcp"
+    mcp_server_url: str = ""
 
     google_calendar_id: str = "primary"
     google_access_token: str = ""
@@ -64,6 +66,25 @@ class Settings(BaseSettings):
             )
 
         self.database_url = url
+
+        # Normalize MCP endpoint so internal calls work in local and cloud runtimes.
+        mcp_url = (self.mcp_server_url or "").strip().rstrip("/")
+        if not mcp_url:
+            runtime_port = os.getenv("PORT") or str(self.app_port)
+            mcp_url = f"http://127.0.0.1:{runtime_port}/mcp"
+
+        if not mcp_url.endswith("/mcp"):
+            mcp_url = f"{mcp_url}/mcp"
+
+        parsed = urlparse(mcp_url)
+        if parsed.hostname in {"127.0.0.1", "localhost"}:
+            runtime_port = os.getenv("PORT")
+            if runtime_port:
+                host = parsed.hostname or "127.0.0.1"
+                parsed = parsed._replace(netloc=f"{host}:{runtime_port}")
+                mcp_url = urlunparse(parsed)
+
+        self.mcp_server_url = mcp_url
         return self
 
 

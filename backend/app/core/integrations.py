@@ -1,9 +1,14 @@
 from datetime import datetime
+import re
 
 import httpx
 from twilio.rest import Client
 
 from app.core.config import settings
+
+
+ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
+E164_RE = re.compile(r"^\+[1-9]\d{7,14}$")
 
 
 async def _refresh_google_access_token() -> str:
@@ -185,11 +190,44 @@ def _normalize_whatsapp_number(target: str) -> str:
     normalized = (target or "").strip()
     if not normalized:
         return ""
-    if normalized.startswith("whatsapp:"):
-        return normalized
+
+    if normalized.lower().startswith("whatsapp:"):
+        normalized = normalized.split(":", 1)[1].strip()
+
+    # Accept commonly typed separators and convert to canonical format.
+    normalized = (
+        normalized.replace(" ", "")
+        .replace("-", "")
+        .replace("(", "")
+        .replace(")", "")
+    )
+
+    if normalized.startswith("00"):
+        normalized = "+" + normalized[2:]
+
     if normalized.startswith("+"):
         return f"whatsapp:{normalized}"
-    return normalized
+
+    if normalized.isdigit():
+        return f"whatsapp:+{normalized}"
+
+    return f"whatsapp:{normalized}"
+
+
+def _extract_e164(whatsapp_number: str) -> str:
+    value = (whatsapp_number or "").strip()
+    if value.startswith("whatsapp:"):
+        return value[len("whatsapp:") :].strip()
+    return value
+
+
+def _is_valid_e164(phone: str) -> bool:
+    return bool(E164_RE.fullmatch((phone or "").strip()))
+
+
+def _clean_provider_error(text: str) -> str:
+    cleaned = ANSI_ESCAPE_RE.sub("", text or "")
+    return " ".join(cleaned.split())
 
 
 async def send_doctor_notification(message: str, doctor_whatsapp_to: str | None = None) -> dict:
@@ -202,6 +240,17 @@ async def send_doctor_notification(message: str, doctor_whatsapp_to: str | None 
         }
 
     target_number = _normalize_whatsapp_number(doctor_whatsapp_to or settings.doctor_whatsapp_to or "")
+    e164_target = _extract_e164(target_number)
+
+    if target_number and not _is_valid_e164(e164_target):
+        return {
+            "mode": "error",
+            "message": (
+                "Invalid doctor WhatsApp number format. Use E.164 format, for example: "
+                "whatsapp:+919876543210"
+            ),
+            "to": target_number,
+        }
 
     creds = {
         "TWILIO_ACCOUNT_SID": (settings.twilio_account_sid or "").strip(),
@@ -228,14 +277,47 @@ async def send_doctor_notification(message: str, doctor_whatsapp_to: str | None 
             to=creds["DOCTOR_WHATSAPP_TO"],
             body=message,
         )
+
+        delivery_status = str(twilio_message.status)
+        delivery_error_code = twilio_message.error_code
+        delivery_error_message = twilio_message.error_message
+
+        # Fetch latest status once to surface immediate channel errors (e.g. sandbox join required).
+        try:
+            latest = client.messages(twilio_message.sid).fetch()
+            delivery_status = str(latest.status)
+            delivery_error_code = latest.error_code
+            delivery_error_message = latest.error_message
+        except Exception:  # noqa: BLE001
+            pass
+
+        if delivery_status in {"failed", "undelivered"}:
+            return {
+                "mode": "error",
+                "message": (
+                    "Doctor WhatsApp notification failed"
+                    + (f" (error_code={delivery_error_code})" if delivery_error_code else "")
+                    + (f": {delivery_error_message}" if delivery_error_message else "")
+                ),
+                "sid": twilio_message.sid,
+                "to": creds["DOCTOR_WHATSAPP_TO"],
+                "status": delivery_status,
+                "error_code": delivery_error_code,
+                "error_message": delivery_error_message,
+            }
+
         return {
             "mode": "live",
             "message": "Doctor WhatsApp notification sent",
             "sid": twilio_message.sid,
             "to": creds["DOCTOR_WHATSAPP_TO"],
+            "status": delivery_status,
+            "error_code": delivery_error_code,
+            "error_message": delivery_error_message,
         }
     except Exception as exc:  # noqa: BLE001
         return {
             "mode": "error",
-            "message": f"Twilio WhatsApp notification failed: {exc}",
+            "message": f"Twilio WhatsApp notification failed: {_clean_provider_error(str(exc))}",
+            "to": creds["DOCTOR_WHATSAPP_TO"],
         }

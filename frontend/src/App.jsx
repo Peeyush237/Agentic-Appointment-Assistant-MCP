@@ -111,14 +111,34 @@ export default function App() {
     getMe(token)
       .then((me) => {
         setUser(me);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, user: me }));
+
+        let savedDoctorWhatsapp = "";
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            savedDoctorWhatsapp = (parsed?.doctor_whatsapp_to || "").trim();
+          }
+        } catch {
+          // ignore parse errors and overwrite with fresh storage object
+        }
+
+        const effectiveDoctorWhatsapp = me.role === "doctor" ? (doctorWhatsapp.trim() || savedDoctorWhatsapp) : "";
+        if (me.role === "doctor" && effectiveDoctorWhatsapp && !doctorWhatsapp.trim()) {
+          setDoctorWhatsapp(effectiveDoctorWhatsapp);
+        }
+
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ token, user: me, doctor_whatsapp_to: effectiveDoctorWhatsapp })
+        );
       })
       .catch(() => {
         setToken("");
         setUser(null);
         localStorage.removeItem(STORAGE_KEY);
       });
-  }, [token]);
+  }, [token, doctorWhatsapp]);
 
   function persistAuth(data) {
     const doctorWhatsappToSave = data.user?.role === "doctor" ? doctorWhatsapp.trim() : "";
@@ -126,6 +146,9 @@ export default function App() {
 
     setToken(data.token);
     setUser(data.user);
+    if (data.user?.role === "doctor") {
+      setDoctorWhatsapp(doctorWhatsappToSave);
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
     setAuthError("");
     setEmail("");

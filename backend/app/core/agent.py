@@ -54,12 +54,56 @@ class AgentOrchestrator:
             f"{now.isoformat()} | day={now.strftime('%A')} | timezone={timezone_name}."
         )
 
+    async def _append_doctor_notification_if_needed(
+        self,
+        role: str,
+        answer: str,
+        tool_trace: list[dict],
+        doctor_whatsapp_to: str | None,
+    ) -> list[dict]:
+        if role != "doctor":
+            return tool_trace
+
+        has_report_stats = any(t.get("tool") == "get_doctor_report_stats" for t in tool_trace)
+        has_notification = any(t.get("tool") == "send_doctor_notification" for t in tool_trace)
+        if not has_report_stats or has_notification:
+            return tool_trace
+
+        notify_args = {"report_text": answer}
+        if (doctor_whatsapp_to or "").strip():
+            notify_args["doctor_whatsapp_to"] = doctor_whatsapp_to.strip()
+
+        try:
+            notify_result = await self.mcp.call_tool("send_doctor_notification", notify_args)
+            notify_text = notify_result["content"][0]["text"]
+            notify_payload = json.loads(notify_text)
+        except Exception as exc:  # noqa: BLE001
+            notify_payload = {
+                "ok": False,
+                "delivery": {
+                    "mode": "error",
+                    "message": f"Auto doctor notification failed: {exc}",
+                },
+                "message": "Doctor notification failed",
+                "target_source": "runtime" if (doctor_whatsapp_to or "").strip() else "default_env",
+            }
+
+        tool_trace.append(
+            {
+                "tool": "send_doctor_notification",
+                "args": notify_args,
+                "result": notify_payload,
+            }
+        )
+        return tool_trace
+
     async def run(
         self,
         role: str,
         user_message: str,
         session_id: str | None = None,
         history: list[dict] | None = None,
+        doctor_whatsapp_to: str | None = None,
     ) -> dict:
         if not self.client:
             return {
@@ -71,7 +115,14 @@ class AgentOrchestrator:
         session_id = session_id or str(uuid4())
         history = history or []
 
-        tools = await self.mcp.list_tools()
+        try:
+            tools = await self.mcp.list_tools()
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "session_id": session_id,
+                "answer": f"MCP tools are temporarily unavailable: {exc}",
+                "tool_trace": [],
+            }
         openai_tools = [
             {
                 "type": "function",
@@ -85,7 +136,14 @@ class AgentOrchestrator:
         ]
 
         prompt_name = "doctor_agent_system" if role == "doctor" else "patient_agent_system"
-        prompt_response = await self.mcp.get_prompt(prompt_name)
+        try:
+            prompt_response = await self.mcp.get_prompt(prompt_name)
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "session_id": session_id,
+                "answer": f"MCP prompt service is unavailable: {exc}",
+                "tool_trace": [],
+            }
         system_prompt = prompt_response["messages"][0]["content"]["text"]
 
         messages = [
@@ -122,6 +180,10 @@ class AgentOrchestrator:
 
             if not message.tool_calls:
                 answer = message.content or "No response generated"
+                tool_trace = await self._append_doctor_notification_if_needed(
+                    role, answer, tool_trace, doctor_whatsapp_to
+                )
+
                 return {"session_id": session_id, "answer": answer, "tool_trace": tool_trace}
 
             messages.append(
@@ -141,9 +203,23 @@ class AgentOrchestrator:
 
             for tc in message.tool_calls:
                 args = json.loads(tc.function.arguments or "{}")
-                result = await self.mcp.call_tool(tc.function.name, args)
-                text = result["content"][0]["text"]
-                tool_trace.append({"tool": tc.function.name, "args": args, "result": json.loads(text)})
+
+                if tc.function.name == "send_doctor_notification" and (doctor_whatsapp_to or "").strip():
+                    # Override hallucinated/masked numbers with authenticated doctor session target.
+                    args["doctor_whatsapp_to"] = doctor_whatsapp_to.strip()
+
+                try:
+                    result = await self.mcp.call_tool(tc.function.name, args)
+                    text = result["content"][0]["text"]
+                    parsed = json.loads(text)
+                except Exception as exc:  # noqa: BLE001
+                    parsed = {
+                        "ok": False,
+                        "message": f"Tool call failed: {exc}",
+                    }
+                    text = json.dumps(parsed)
+
+                tool_trace.append({"tool": tc.function.name, "args": args, "result": parsed})
 
                 messages.append(
                     {
@@ -156,7 +232,12 @@ class AgentOrchestrator:
         return {
             "session_id": session_id,
             "answer": "Max tool-call iterations reached. Please refine your request.",
-            "tool_trace": tool_trace,
+            "tool_trace": await self._append_doctor_notification_if_needed(
+                role,
+                "Max tool-call iterations reached. Please refine your request.",
+                tool_trace,
+                doctor_whatsapp_to,
+            ),
         }
 
 

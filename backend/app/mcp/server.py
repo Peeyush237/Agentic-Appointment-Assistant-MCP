@@ -349,9 +349,21 @@ async def _tool_get_doctor_report_stats(arguments: dict[str, Any]) -> dict[str, 
 
 async def _tool_send_doctor_notification(arguments: dict[str, Any]) -> dict[str, Any]:
     report_text = arguments.get("report_text", "No report text provided")
-    doctor_whatsapp_to = arguments.get("doctor_whatsapp_to") or RUNTIME_DOCTOR_WHATSAPP_TO.get()
+    runtime_target = (RUNTIME_DOCTOR_WHATSAPP_TO.get() or "").strip()
+    tool_arg_target = (arguments.get("doctor_whatsapp_to") or "").strip()
+
+    # Trust runtime authenticated session target first; tool args can be stale or hallucinated.
+    doctor_whatsapp_to = runtime_target or tool_arg_target
     sent = await send_doctor_notification(report_text, doctor_whatsapp_to=doctor_whatsapp_to)
-    return {"ok": True, "delivery": sent, "message": "Doctor notification sent"}
+    mode = sent.get("mode")
+    ok = mode == "live"
+    message = "Doctor notification sent" if ok else "Doctor notification failed"
+    return {
+        "ok": ok,
+        "delivery": sent,
+        "message": message,
+        "target_source": "runtime" if runtime_target else ("tool_arg" if tool_arg_target else "default_env"),
+    }
 
 
 async def _tool_get_current_datetime(arguments: dict[str, Any]) -> dict[str, Any]:

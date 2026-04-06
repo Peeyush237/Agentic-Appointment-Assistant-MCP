@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
@@ -68,7 +69,7 @@ class ChatMessage(Base):
     thread_id: Mapped[str] = mapped_column(ForeignKey("chat_threads.id", ondelete="CASCADE"), index=True)
     sender: Mapped[str] = mapped_column(String(20), index=True)
     content: Mapped[str] = mapped_column(Text)
-    tool_trace_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tool_trace_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
     thread: Mapped[ChatThread] = relationship(back_populates="messages")
@@ -85,8 +86,8 @@ class Appointment(Base):
     status: Mapped[str] = mapped_column(String(50), default="booked")
     start_time: Mapped[datetime] = mapped_column(DateTime, index=True)
     end_time: Mapped[datetime] = mapped_column(DateTime, index=True)
-    calendar_event_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    calendar_event_id: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     doctor: Mapped[Doctor] = relationship(back_populates="appointments")

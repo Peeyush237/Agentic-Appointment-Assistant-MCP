@@ -231,6 +231,7 @@ async def _tool_book_appointment(arguments: dict[str, Any]) -> dict[str, Any]:
             description=f"Symptoms: {symptoms}",
             start_time=start_time,
             end_time=end_time,
+            attendee_email=patient_email,
         )
 
         appt = Appointment(

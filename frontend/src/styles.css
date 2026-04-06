@@ -216,6 +216,26 @@ h3 {
   gap: 10px;
 }
 
+.demoCredentials {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.demoCredentials p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.demoCredentials button {
+  width: fit-content;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
 .authActions {
   display: flex;
   gap: 10px;

@@ -75,7 +75,13 @@ async def _refresh_google_access_token_with_error() -> tuple[str, str]:
         return "", f"Token refresh exception: {exc}"
 
 
-async def create_google_calendar_event(summary: str, description: str, start_time: datetime, end_time: datetime) -> dict:
+async def create_google_calendar_event(
+    summary: str,
+    description: str,
+    start_time: datetime,
+    end_time: datetime,
+    attendee_email: str | None = None,
+) -> dict:
     access_token = (settings.google_access_token or "").strip()
     refresh_error = ""
     if settings.google_refresh_token:
@@ -108,16 +114,22 @@ async def create_google_calendar_event(summary: str, description: str, start_tim
         },
     }
 
+    attendee = (attendee_email or "").strip()
+    if "@" in attendee:
+        payload["attendees"] = [{"email": attendee}]
+        payload["guestsCanInviteOthers"] = False
+
     url = f"https://www.googleapis.com/calendar/v3/calendars/{settings.google_calendar_id}/events"
     headers = {"Authorization": f"Bearer {access_token}"}
+    query = {"sendUpdates": "all"} if "attendees" in payload else None
 
     async with httpx.AsyncClient(timeout=20) as client:
-        response = await client.post(url, json=payload, headers=headers)
+        response = await client.post(url, json=payload, headers=headers, params=query)
         if response.status_code == 401 and settings.google_refresh_token:
             refreshed_token, retry_refresh_error = await _refresh_google_access_token_with_error()
             if refreshed_token:
                 retry_headers = {"Authorization": f"Bearer {refreshed_token}"}
-                response = await client.post(url, json=payload, headers=retry_headers)
+                response = await client.post(url, json=payload, headers=retry_headers, params=query)
             else:
                 return {
                     "mode": "error",
@@ -135,6 +147,13 @@ async def create_google_calendar_event(summary: str, description: str, start_tim
                 "message": f"Calendar API failed: {response.text}",
             }
         data = response.json()
+        if "attendees" in payload:
+            return {
+                "mode": "live",
+                "event_id": data.get("id"),
+                "message": "Calendar event created and attendee invite sent",
+                "invite_sent_to": attendee,
+            }
         return {"mode": "live", "event_id": data.get("id"), "message": "Calendar event created"}
 
 

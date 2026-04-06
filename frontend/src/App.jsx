@@ -4,6 +4,8 @@ import ChatPanel from "./components/ChatPanel";
 import { getMe, login, register } from "./api/client";
 
 const STORAGE_KEY = "appointment_auth";
+const DEMO_DOCTOR_EMAIL = "doctor@clinic.local";
+const DEMO_DOCTOR_PASSWORD = "doctor123";
 
 const PUBLIC_LINKS = [
   {
@@ -203,6 +205,23 @@ export default function App() {
                     placeholder="Full name (for register)"
                     disabled={busy}
                   />
+                )}
+                {authRole === "doctor" && (
+                  <div className="demoCredentials">
+                    <p>
+                      Demo Doctor Login: <strong>{DEMO_DOCTOR_EMAIL}</strong> / <strong>{DEMO_DOCTOR_PASSWORD}</strong>
+                    </p>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setEmail(DEMO_DOCTOR_EMAIL);
+                        setPassword(DEMO_DOCTOR_PASSWORD);
+                      }}
+                    >
+                      Use Demo Credentials
+                    </button>
+                  </div>
                 )}
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" disabled={busy} />
                 <input

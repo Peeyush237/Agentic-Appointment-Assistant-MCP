@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api.routes import router as api_router
 from app.core.config import settings
@@ -10,9 +11,24 @@ from app.db.seed import seed_data  # importing seed also registers all models wi
 from app.mcp.server import router as mcp_router
 
 
+def _apply_column_migrations() -> None:
+    """Add new columns to existing tables (idempotent — uses IF NOT EXISTS)."""
+    stmts = [
+        "ALTER TABLE doctors     ADD COLUMN IF NOT EXISTS clinic_id        INTEGER",
+        "ALTER TABLE users        ADD COLUMN IF NOT EXISTS doctor_profile_id INTEGER",
+        "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS clinic_id        INTEGER",
+        "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS user_id          INTEGER",
+    ]
+    with engine.connect() as conn:
+        for stmt in stmts:
+            conn.execute(text(stmt))
+        conn.commit()
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)  # creates new tables (cities, clinics, doctor_availability)
+    _apply_column_migrations()             # adds new columns to existing tables
     with SessionLocal() as db:
         seed_data(db)
     yield

@@ -2,6 +2,11 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+
+
+def _utcnow() -> datetime:
+    """Naive UTC datetime — matches how timestamps are stored in the DB."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -41,8 +46,6 @@ from app.db.seed import admin_email, admin_password, doctor_email, doctor_passwo
 
 router = APIRouter(prefix="/api", tags=["api"])
 
-_UTC = timezone.utc
-
 
 # ─── auth helpers ────────────────────────────────────────────────────────────
 
@@ -62,7 +65,7 @@ def _current_user(
     token = _extract_bearer_token(authorization)
     hashed = token_hash(token)
     token_row = db.scalar(select(AuthToken).where(AuthToken.token_hash == hashed))
-    if not token_row or token_row.expires_at <= datetime.now(_UTC):
+    if not token_row or token_row.expires_at <= _utcnow():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired or invalid")
     user = db.get(User, token_row.user_id)
     if not user:
@@ -297,7 +300,7 @@ async def chat(req: ChatRequest, user: User = Depends(_current_user), db: Sessio
     ))
     if thread.title in {"Patient Chat", "Doctor Chat", "New Chat"}:
         thread.title = req.message.strip()[:60] or thread.title
-    thread.updated_at = datetime.now(_UTC)
+    thread.updated_at = _utcnow()
     db.commit()
     return ChatResponse(chat_id=thread.id, response=result["answer"], tool_trace=result["tool_trace"])
 
@@ -306,7 +309,7 @@ async def chat(req: ChatRequest, user: User = Depends(_current_user), db: Sessio
 
 @router.get("/my-appointments", response_model=list[AppointmentDetailResponse])
 async def my_appointments(user: User = Depends(_current_user), db: Session = Depends(get_db)):
-    now = datetime.now(_UTC)
+    now = _utcnow()
     appointments = db.scalars(
         select(Appointment).where(
             and_(
@@ -337,7 +340,7 @@ async def cancel_appointment(appointment_id: int, user: User = Depends(_current_
 
 @router.get("/doctor/queue", response_model=list[QueueItemResponse])
 async def doctor_queue(user: User = Depends(_require_doctor), db: Session = Depends(get_db)):
-    today_start = datetime.now(_UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = _utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + timedelta(days=1)
     appointments = db.scalars(
         select(Appointment).where(
@@ -467,7 +470,7 @@ async def doctor_history(
     days: int = Query(default=30),
     user: User = Depends(_require_doctor), db: Session = Depends(get_db),
 ):
-    since = datetime.now(_UTC) - timedelta(days=days)
+    since = _utcnow() - timedelta(days=days)
     stmt = select(Appointment).where(
         Appointment.doctor_id == user.doctor_profile_id,
         Appointment.start_time >= since,
@@ -489,7 +492,7 @@ async def admin_dashboard(user: User = Depends(_require_admin), db: Session = De
         select(func.count(Doctor.id)).where(Doctor.clinic_id == user.clinic_id)
     ) or 0
 
-    today_start = datetime.now(_UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = _utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     today_end = today_start + timedelta(days=1)
 
     base = select(func.count(Appointment.id)).where(
@@ -623,7 +626,7 @@ async def admin_appointments(
         day_start = dateparser.parse(date).replace(hour=0, minute=0, second=0, microsecond=0)
         day_end = day_start + timedelta(days=1)
     else:
-        day_start = datetime.now(_UTC).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
+        day_start = _utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
         day_end = day_start + timedelta(days=days + 1)
 
     stmt = select(Appointment).where(

@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 
 from sqlalchemy import select
@@ -9,7 +10,6 @@ from app.db.models import Appointment, City, Clinic, Doctor, DoctorAvailability,
 
 # --------------------------------------------------------------------------- #
 # Pan-India clinic data                                                        #
-# Each city → list of clinics → each clinic has a list of (name, spec) doctors #
 # --------------------------------------------------------------------------- #
 CLINIC_DATA: list[dict] = [
     # ── Delhi ──────────────────────────────────────────────────────────────
@@ -134,9 +134,9 @@ CLINIC_DATA: list[dict] = [
         "address": "Elgin Road, Kolkata – 700020",
         "phone": "+91-33-2282-1234",
         "doctors": [
-            ("Dr. Banerjee",   "General Physician"),
-            ("Dr. Chakraborty","Cardiologist"),
-            ("Dr. Ghosh",      "Pediatrician"),
+            ("Dr. Banerjee",    "General Physician"),
+            ("Dr. Chakraborty", "Cardiologist"),
+            ("Dr. Ghosh",       "Pediatrician"),
         ],
     },
     {
@@ -245,118 +245,211 @@ CLINIC_DATA: list[dict] = [
 ]
 
 
+# ── credential helpers ────────────────────────────────────────────────────────
+
+def _email_slug(text: str) -> str:
+    """'Apollo Clinic, Delhi' → 'apolloclinicdelhi'"""
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def _password_slug(text: str) -> str:
+    """'Apollo Clinic, Delhi' → 'ApolloClinicDelhi'"""
+    return re.sub(r"[^a-zA-Z0-9]", "", text)
+
+
+def _name_slug(name: str) -> str:
+    """'Dr. Rao B' → 'raob'"""
+    stripped = re.sub(r"^dr\.?\s*", "", name.lower().strip())
+    return re.sub(r"[^a-z0-9]", "", stripped)
+
+
+def doctor_email(doctor_name: str, clinic_name: str) -> str:
+    return f"dr.{_name_slug(doctor_name)}@{_email_slug(clinic_name)}.local"
+
+
+def doctor_password(city_name: str, clinic_name: str, doctor_id: int) -> str:
+    return f"{city_name}_{_password_slug(clinic_name)}_{doctor_id}"
+
+
+def admin_email(clinic_name: str) -> str:
+    return f"admin@{_email_slug(clinic_name)}.local"
+
+
+def admin_password(clinic_name: str, clinic_id: int) -> str:
+    return f"admin_{_password_slug(clinic_name)}_{clinic_id}"
+
+
+# ── internal helpers ──────────────────────────────────────────────────────────
+
 def _seed_availability(db: Session, doctor_id: int) -> None:
     """Standard Mon–Fri: 9 AM–1 PM and 2 PM–6 PM."""
-    for day in range(5):  # 0 = Monday … 4 = Friday
+    for day in range(5):
         db.add(DoctorAvailability(doctor_id=doctor_id, day_of_week=day, start_hour=9,  end_hour=13))
         db.add(DoctorAvailability(doctor_id=doctor_id, day_of_week=day, start_hour=14, end_hour=18))
 
 
-def _ensure_doctor_user(db: Session, ahuja_doctor_id: int | None) -> None:
-    """Ensure the demo doctor login account exists and is linked to Dr. Ahuja."""
-    doctor_user = db.scalar(select(User).where(User.email == settings.default_doctor_login_email))
-    if not doctor_user:
-        db.add(
-            User(
-                email=settings.default_doctor_login_email,
-                full_name="Dr. Ahuja",
-                role="doctor",
-                password_hash=hash_password(settings.default_doctor_login_password),
-                doctor_profile_id=ahuja_doctor_id,
-            )
-        )
+def _upsert_user(
+    db: Session,
+    *,
+    email: str,
+    full_name: str,
+    role: str,
+    password: str,
+    doctor_profile_id: int | None = None,
+    clinic_id: int | None = None,
+) -> User:
+    user = db.scalar(select(User).where(User.email == email))
+    if user:
+        user.full_name = full_name
+        user.role = role
+        user.password_hash = hash_password(password)
+        if doctor_profile_id is not None:
+            user.doctor_profile_id = doctor_profile_id
+        if clinic_id is not None:
+            user.clinic_id = clinic_id
     else:
-        doctor_user.full_name = "Dr. Ahuja"
-        doctor_user.role = "doctor"
-        doctor_user.password_hash = hash_password(settings.default_doctor_login_password)
-        if ahuja_doctor_id and not doctor_user.doctor_profile_id:
-            doctor_user.doctor_profile_id = ahuja_doctor_id
-    db.commit()
+        user = User(
+            email=email,
+            full_name=full_name,
+            role=role,
+            password_hash=hash_password(password),
+            doctor_profile_id=doctor_profile_id,
+            clinic_id=clinic_id,
+        )
+        db.add(user)
+    return user
 
+
+# ── main seed ─────────────────────────────────────────────────────────────────
 
 def seed_data(db: Session) -> None:
-    # If cities already exist, only ensure the doctor user is intact.
-    if db.scalar(select(City).limit(1)) is not None:
-        ahuja = db.scalar(select(Doctor).where(Doctor.name == "Dr. Ahuja"))
-        _ensure_doctor_user(db, ahuja.id if ahuja else None)
-        return
+    cities_exist = db.scalar(select(City).limit(1)) is not None
 
-    # ── 1. Upsert cities and clinics ──────────────────────────────────────
-    city_cache: dict[str, City] = {}
-    clinic_cache: dict[str, Clinic] = {}
+    if not cities_exist:
+        # ── 1. Create cities and clinics ──────────────────────────────────
+        city_cache: dict[str, City] = {}
+        clinic_cache: dict[str, Clinic] = {}
 
-    for entry in CLINIC_DATA:
-        city_name = entry["city"]
+        for entry in CLINIC_DATA:
+            city_name = entry["city"]
+            if city_name not in city_cache:
+                city = City(name=city_name, state=entry["state"], is_active=True)
+                db.add(city)
+                db.flush()
+                city_cache[city_name] = city
 
-        if city_name not in city_cache:
-            city = City(name=city_name, state=entry["state"], is_active=True)
-            db.add(city)
-            db.flush()  # get id
-            city_cache[city_name] = city
-
-        city_obj = city_cache[city_name]
-        clinic = Clinic(
-            name=entry["name"],
-            city_id=city_obj.id,
-            address=entry.get("address"),
-            phone=entry.get("phone"),
-            is_active=True,
-        )
-        db.add(clinic)
-        db.flush()
-        clinic_cache[entry["name"]] = clinic
-
-    # ── 2. Upsert doctors + availability ─────────────────────────────────
-    ahuja_id: int | None = None
-
-    for entry in CLINIC_DATA:
-        clinic_obj = clinic_cache[entry["name"]]
-        for doctor_name, specialization in entry["doctors"]:
-            # Upsert: existing rows (from pre-city seed) get clinic_id assigned
-            doctor = db.scalar(select(Doctor).where(Doctor.name == doctor_name))
-            if doctor:
-                doctor.clinic_id = clinic_obj.id
-                doctor.specialization = specialization
-            else:
-                doctor = Doctor(name=doctor_name, specialization=specialization, clinic_id=clinic_obj.id)
-                db.add(doctor)
+            clinic = Clinic(
+                name=entry["name"],
+                city_id=city_cache[city_name].id,
+                address=entry.get("address"),
+                phone=entry.get("phone"),
+                is_active=True,
+            )
+            db.add(clinic)
             db.flush()
+            clinic_cache[entry["name"]] = clinic
 
-            # Add availability only if none exists yet
-            has_avail = db.scalar(select(DoctorAvailability).where(DoctorAvailability.doctor_id == doctor.id).limit(1))
-            if not has_avail:
-                _seed_availability(db, doctor.id)
+        # ── 2. Upsert doctors + availability ─────────────────────────────
+        for entry in CLINIC_DATA:
+            clinic_obj = clinic_cache[entry["name"]]
+            for doctor_name, specialization in entry["doctors"]:
+                doctor = db.scalar(select(Doctor).where(Doctor.name == doctor_name))
+                if doctor:
+                    doctor.clinic_id = clinic_obj.id
+                    doctor.specialization = specialization
+                else:
+                    doctor = Doctor(name=doctor_name, specialization=specialization, clinic_id=clinic_obj.id)
+                    db.add(doctor)
+                db.flush()
 
-            if doctor_name == "Dr. Ahuja":
-                ahuja_id = doctor.id
+                if not db.scalar(select(DoctorAvailability).where(DoctorAvailability.doctor_id == doctor.id).limit(1)):
+                    _seed_availability(db, doctor.id)
+
+        db.commit()
+
+        # ── 3. Sample completed appointment for Dr. Ahuja ─────────────────
+        ahuja = db.scalar(select(Doctor).where(Doctor.name == "Dr. Ahuja"))
+        if ahuja:
+            yesterday_noon = datetime.now().replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(days=1)
+            if not db.scalar(select(Appointment).where(
+                Appointment.doctor_id == ahuja.id, Appointment.start_time == yesterday_noon
+            )):
+                db.add(Appointment(
+                    doctor_id=ahuja.id, clinic_id=ahuja.clinic_id,
+                    patient_name="Seed Patient", patient_email="seed@example.com",
+                    symptoms="fever", status="completed",
+                    start_time=yesterday_noon, end_time=yesterday_noon + timedelta(minutes=30),
+                    notes="Follow-up in one week",
+                ))
+                db.commit()
+    else:
+        # Cities exist but doctors may still need clinic_id (migration run)
+        clinic_cache: dict[str, Clinic] = {
+            c.name: c for c in db.scalars(select(Clinic)).all()
+        }
+        for entry in CLINIC_DATA:
+            clinic_obj = clinic_cache.get(entry["name"])
+            if not clinic_obj:
+                continue
+            for doctor_name, specialization in entry["doctors"]:
+                doctor = db.scalar(select(Doctor).where(Doctor.name == doctor_name))
+                if doctor and not doctor.clinic_id:
+                    doctor.clinic_id = clinic_obj.id
+                    db.flush()
+                if doctor and not db.scalar(
+                    select(DoctorAvailability).where(DoctorAvailability.doctor_id == doctor.id).limit(1)
+                ):
+                    _seed_availability(db, doctor.id)
+        db.commit()
+
+    # ── 4. Create/update User accounts for every doctor ───────────────────
+    all_clinics: dict[str, Clinic] = {
+        c.name: c for c in db.scalars(select(Clinic)).all()
+    }
+    all_cities: dict[int, City] = {
+        city.id: city for city in db.scalars(select(City)).all()
+    }
+
+    for entry in CLINIC_DATA:
+        clinic_obj = all_clinics.get(entry["name"])
+        if not clinic_obj:
+            continue
+        city_obj = all_cities.get(clinic_obj.city_id)
+        city_name = city_obj.name if city_obj else entry["city"]
+
+        for doctor_name, _ in entry["doctors"]:
+            doctor = db.scalar(select(Doctor).where(Doctor.name == doctor_name))
+            if not doctor:
+                continue
+            _upsert_user(
+                db,
+                email=doctor_email(doctor_name, entry["name"]),
+                full_name=doctor_name,
+                role="doctor",
+                password=doctor_password(city_name, entry["name"], doctor.id),
+                doctor_profile_id=doctor.id,
+            )
+
+        # Admin user per clinic
+        _upsert_user(
+            db,
+            email=admin_email(entry["name"]),
+            full_name=f"Admin – {entry['name']}",
+            role="admin",
+            password=admin_password(entry["name"], clinic_obj.id),
+            clinic_id=clinic_obj.id,
+        )
 
     db.commit()
 
-    # ── 3. Sample completed appointment for Dr. Ahuja (for report stats) ─
+    # ── 5. Keep legacy demo account (doctor@clinic.local → Dr. Ahuja) ─────
     ahuja = db.scalar(select(Doctor).where(Doctor.name == "Dr. Ahuja"))
-    if ahuja:
-        yesterday_noon = datetime.now().replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(days=1)
-        existing = db.scalar(
-            select(Appointment).where(
-                Appointment.doctor_id == ahuja.id,
-                Appointment.start_time == yesterday_noon,
-            )
-        )
-        if not existing:
-            db.add(
-                Appointment(
-                    doctor_id=ahuja.id,
-                    clinic_id=ahuja.clinic_id,
-                    patient_name="Seed Patient",
-                    patient_email="seed@example.com",
-                    symptoms="fever",
-                    status="completed",
-                    start_time=yesterday_noon,
-                    end_time=yesterday_noon + timedelta(minutes=30),
-                    notes="Follow-up in one week",
-                )
-            )
-            db.commit()
-
-    # ── 4. Demo doctor user ───────────────────────────────────────────────
-    _ensure_doctor_user(db, ahuja_id)
+    _upsert_user(
+        db,
+        email=settings.default_doctor_login_email,
+        full_name="Dr. Ahuja (Demo)",
+        role="doctor",
+        password=settings.default_doctor_login_password,
+        doctor_profile_id=ahuja.id if ahuja else None,
+    )
+    db.commit()

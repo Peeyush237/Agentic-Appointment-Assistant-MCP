@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
@@ -39,6 +39,7 @@ class Doctor(Base):
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     specialization: Mapped[str] = mapped_column(String(120))
     clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), nullable=True, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     clinic: Mapped["Clinic"] = relationship(back_populates="doctors")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="doctor")
@@ -73,7 +74,9 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     # For doctor-role users: links this login account to a Doctor record
     doctor_profile_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # For admin-role users: links this login account to the clinic they administer
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     tokens: Mapped[list["AuthToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     chat_threads: Mapped[list["ChatThread"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -85,7 +88,7 @@ class AuthToken(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
 
     user: Mapped["User"] = relationship(back_populates="tokens")
@@ -98,8 +101,8 @@ class ChatThread(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(20), index=True)
     title: Mapped[str] = mapped_column(String(200), default="New Chat")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user: Mapped["User"] = relationship(back_populates="chat_threads")
     messages: Mapped[list["ChatMessage"]] = relationship(
@@ -117,7 +120,7 @@ class ChatMessage(Base):
     sender: Mapped[str] = mapped_column(String(20), index=True)
     content: Mapped[str] = mapped_column(Text)
     tool_trace_json: Mapped[str] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
     thread: Mapped["ChatThread"] = relationship(back_populates="messages")
 
@@ -137,6 +140,6 @@ class Appointment(Base):
     end_time: Mapped[datetime] = mapped_column(DateTime, index=True)
     calendar_event_id: Mapped[str] = mapped_column(String(200), nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     doctor: Mapped["Doctor"] = relationship(back_populates="appointments")

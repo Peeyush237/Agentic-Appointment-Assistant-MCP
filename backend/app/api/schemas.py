@@ -11,8 +11,8 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     email: str
-    password: str = Field(min_length=6, max_length=128)
-    role: str = Field(pattern="^(patient|doctor)$")
+    password: str = Field(min_length=1, max_length=128)
+    role: str = Field(pattern="^(patient|doctor|admin)$")
 
 
 class UserResponse(BaseModel):
@@ -20,6 +20,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     role: str
+    clinic_id: int | None = None
 
 
 class AuthResponse(BaseModel):
@@ -82,8 +83,10 @@ class DoctorResponse(BaseModel):
     id: int
     name: str
     specialization: str
+    clinic_id: int | None = None
     clinic_name: str | None = None
     city: str | None = None
+    is_active: bool = True
 
 
 # ── Appointments ───────────────────────────────────────────────────────────
@@ -94,14 +97,21 @@ class AppointmentDetailResponse(BaseModel):
     specialization: str | None = None
     clinic_name: str | None = None
     city: str | None = None
+    patient_name: str
+    patient_email: str
     start_time: datetime
     end_time: datetime
     symptoms: str
     status: str
+    notes: str | None = None
 
 
 class AppointmentStatusUpdate(BaseModel):
     status: str = Field(pattern="^(booked|completed|no_show|cancelled)$")
+
+
+class AppointmentNotesUpdate(BaseModel):
+    notes: str = Field(max_length=2000)
 
 
 # ── Doctor queue ───────────────────────────────────────────────────────────
@@ -114,3 +124,51 @@ class QueueItemResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     status: str
+    notes: str | None = None
+
+
+# ── Doctor schedule ────────────────────────────────────────────────────────
+
+class AvailabilityWindowResponse(BaseModel):
+    id: int
+    day_of_week: int
+    start_hour: int
+    start_minute: int
+    end_hour: int
+    end_minute: int
+
+
+class AvailabilityWindowCreate(BaseModel):
+    day_of_week: int = Field(ge=0, le=6)
+    start_hour: int = Field(ge=0, le=23)
+    start_minute: int = Field(default=0, ge=0, le=59)
+    end_hour: int = Field(ge=0, le=23)
+    end_minute: int = Field(default=0, ge=0, le=59)
+
+
+class ScheduleReplaceRequest(BaseModel):
+    windows: list[AvailabilityWindowCreate]
+
+
+# ── Admin schemas ──────────────────────────────────────────────────────────
+
+class AdminDashboardResponse(BaseModel):
+    clinic_name: str
+    city: str
+    total_doctors: int
+    today_total: int
+    today_pending: int
+    today_completed: int
+    today_no_show: int
+    today_cancelled: int
+
+
+class DoctorCreateRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    specialization: str = Field(min_length=2, max_length=120)
+
+
+class DoctorUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    specialization: str | None = Field(default=None, min_length=2, max_length=120)
+    is_active: bool | None = None

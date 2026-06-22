@@ -14,10 +14,12 @@ from app.mcp.server import router as mcp_router
 def _apply_column_migrations() -> None:
     """Add new columns to existing tables (idempotent — uses IF NOT EXISTS)."""
     stmts = [
-        "ALTER TABLE doctors     ADD COLUMN IF NOT EXISTS clinic_id        INTEGER",
-        "ALTER TABLE users        ADD COLUMN IF NOT EXISTS doctor_profile_id INTEGER",
-        "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS clinic_id        INTEGER",
-        "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS user_id          INTEGER",
+        "ALTER TABLE doctors      ADD COLUMN IF NOT EXISTS clinic_id         INTEGER",
+        "ALTER TABLE doctors      ADD COLUMN IF NOT EXISTS is_active         BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE users         ADD COLUMN IF NOT EXISTS doctor_profile_id INTEGER",
+        "ALTER TABLE users         ADD COLUMN IF NOT EXISTS clinic_id         INTEGER",
+        "ALTER TABLE appointments  ADD COLUMN IF NOT EXISTS clinic_id         INTEGER",
+        "ALTER TABLE appointments  ADD COLUMN IF NOT EXISTS user_id           INTEGER",
     ]
     with engine.connect() as conn:
         for stmt in stmts:

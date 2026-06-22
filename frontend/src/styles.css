@@ -962,6 +962,477 @@ pre {
   border-color: rgba(251, 191, 36, 0.65);
 }
 
+/* ── Success message ─────────────────────────────────────────────────────── */
+.successMsg {
+  color: #6ee7b7;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+/* ── Doctor Schedule ─────────────────────────────────────────────────────── */
+.schedulePanel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  max-height: calc(100vh - 185px);
+}
+
+.schedulePanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scheduleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.scheduleDayCard {
+  padding: 14px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.scheduleDayOff {
+  opacity: 0.5;
+}
+
+.scheduleDayHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scheduleDayName {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.scheduleClearDayBtn {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
+  background: transparent;
+}
+
+.scheduleOffBadge {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.scheduleWindowRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.scheduleWindowTime {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.scheduleDeleteBtn {
+  font-size: 11px;
+  padding: 2px 6px;
+  color: var(--muted);
+  border-color: transparent;
+  background: transparent;
+}
+
+.scheduleDeleteBtn:hover:not(:disabled) {
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.scheduleAddForm {
+  padding: 16px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scheduleAddRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scheduleTimeInput {
+  width: 56px;
+  text-align: center;
+}
+
+/* ── Doctor History ───────────────────────────────────────────────────────── */
+.historyPanel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  max-height: calc(100vh - 185px);
+}
+
+.historyPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.historyFilters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.historyCount {
+  font-size: 12px;
+}
+
+.historyList {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.historyCard {
+  padding: 14px 16px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.historyCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.historyPatient {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.historyMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.historyNotes {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 8px;
+}
+
+.historyNoteDisplay {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.historyNoteDisplay:hover .historyNoteText {
+  color: var(--fg);
+}
+
+.historyNoteText {
+  white-space: pre-wrap;
+}
+
+.historyNoteEditHint {
+  font-size: 11px;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+.historyNoteEmpty {
+  font-size: 13px;
+  color: rgba(255,255,255,0.25);
+  font-style: italic;
+}
+
+.historyNoteEdit textarea {
+  width: 100%;
+  min-height: 72px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: var(--fg);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.historyNoteActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.historyActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Admin Dashboard ─────────────────────────────────────────────────────── */
+.adminDashboard {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  max-height: calc(100vh - 185px);
+}
+
+.adminDashHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.statCard {
+  padding: 16px;
+  border-radius: 14px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statValue {
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.statNeutral  { background: rgba(255,255,255,0.04); }
+.statPending  { background: rgba(59, 130, 246, 0.12); }
+.statDone     { background: rgba(52, 211, 153, 0.12); }
+.statWarn     { background: rgba(251, 191, 36, 0.12); }
+.statCancel   { background: rgba(248, 113, 113, 0.12); }
+
+.adminQuickInfo {
+  padding: 14px 16px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ── Admin common ────────────────────────────────────────────────────────── */
+.adminPanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.adminFilters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.adminFilters input[type="date"] {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  color: var(--fg);
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+/* ── Admin Doctors ───────────────────────────────────────────────────────── */
+.adminDoctorsPanel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  max-height: calc(100vh - 185px);
+}
+
+.adminAddForm {
+  padding: 16px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adminAddRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.adminAddRow input,
+.adminAddRow select {
+  flex: 1;
+  min-width: 140px;
+}
+
+.adminTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.adminTableHeader {
+  display: grid;
+  grid-template-columns: 1fr 1fr 100px 160px;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.adminTableRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr 100px 160px;
+  gap: 12px;
+  padding: 12px 14px;
+  align-items: center;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  transition: background 120ms;
+}
+
+.adminTableRow:hover { background: rgba(255,255,255,0.02); }
+
+.adminRowInactive { opacity: 0.5; }
+
+.adminDoctorName {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.adminRowActions {
+  display: flex;
+  gap: 6px;
+}
+
+.adminRowActions button {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+/* ── Admin Appointments ──────────────────────────────────────────────────── */
+.adminApptPanel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+  max-height: calc(100vh - 185px);
+}
+
+.adminApptCount {
+  font-size: 12px;
+}
+
+.adminApptTable {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adminApptRow {
+  padding: 12px 14px;
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: 160px 1fr 180px;
+  gap: 14px;
+  align-items: start;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.adminApptRowLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.adminApptTime {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.adminApptRowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.adminApptPatient {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.adminApptRowRight {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: right;
+}
+
+.adminApptDoctor {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.adminApptNotes {
+  font-size: 11px;
+  font-style: italic;
+}
+
 /* ── Responsive overrides ────────────────────────────────────────────────── */
 @media (max-width: 980px) {
   .landingContent {

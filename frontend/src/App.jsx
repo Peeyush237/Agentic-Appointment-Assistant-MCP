@@ -1,13 +1,24 @@
 import React from "react";
 import { useEffect, useState } from "react";
+import AdminAppointments from "./components/AdminAppointments";
+import AdminDashboard from "./components/AdminDashboard";
+import AdminDoctors from "./components/AdminDoctors";
 import AppointmentsPanel from "./components/AppointmentsPanel";
 import ChatPanel from "./components/ChatPanel";
+import DoctorHistory from "./components/DoctorHistory";
 import DoctorQueue from "./components/DoctorQueue";
+import DoctorSchedule from "./components/DoctorSchedule";
 import { getMe, login, logout as apiLogout, register } from "./api/client";
 
 const STORAGE_KEY = "appointment_auth";
-const DEMO_DOCTOR_EMAIL = "doctor@clinic.local";
-const DEMO_DOCTOR_PASSWORD = "doctor123";
+
+// Dr. Rao demo — Apollo Clinic, Delhi (ID=2 on first seed)
+const DEMO_DOCTOR_EMAIL    = "dr.rao@apolloclinicdelhi.local";
+const DEMO_DOCTOR_PASSWORD = "Delhi_ApolloClinicDelhi_2";
+
+// Admin demo — Apollo Clinic, Delhi (clinic ID=1)
+const DEMO_ADMIN_EMAIL    = "admin@apolloclinicdelhi.local";
+const DEMO_ADMIN_PASSWORD = "admin_ApolloClinicDelhi_1";
 
 const PUBLIC_LINKS = [
   {
@@ -131,6 +142,10 @@ export default function App() {
     setEmail("");
     setFullName("");
     setPassword("");
+    // Set the most relevant default tab per role
+    if (data.user.role === "admin")   setActiveTab("dashboard");
+    else if (data.user.role === "doctor") setActiveTab("queue");
+    else setActiveTab("chat");
   }
 
   async function onLogin() {
@@ -195,10 +210,13 @@ export default function App() {
 
               <div className="roleToggle">
                 <button className={authRole === "patient" ? "active" : ""} onClick={() => setAuthRole("patient")}>
-                  Patient Login
+                  Patient
                 </button>
                 <button className={authRole === "doctor" ? "active" : ""} onClick={() => setAuthRole("doctor")}>
-                  Doctor Login
+                  Doctor
+                </button>
+                <button className={authRole === "admin" ? "active" : ""} onClick={() => setAuthRole("admin")}>
+                  Admin
                 </button>
               </div>
 
@@ -213,17 +231,20 @@ export default function App() {
                 )}
                 {authRole === "doctor" && (
                   <div className="demoCredentials">
-                    <p>
-                      Demo Doctor Login: <strong>{DEMO_DOCTOR_EMAIL}</strong> / <strong>{DEMO_DOCTOR_PASSWORD}</strong>
-                    </p>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        setEmail(DEMO_DOCTOR_EMAIL);
-                        setPassword(DEMO_DOCTOR_PASSWORD);
-                      }}
-                    >
+                    <p>Demo — Dr. Rao (Pediatrician, Apollo Clinic Delhi)</p>
+                    <p><strong>{DEMO_DOCTOR_EMAIL}</strong></p>
+                    <p><strong>{DEMO_DOCTOR_PASSWORD}</strong></p>
+                    <button type="button" disabled={busy} onClick={() => { setEmail(DEMO_DOCTOR_EMAIL); setPassword(DEMO_DOCTOR_PASSWORD); }}>
+                      Use Demo Credentials
+                    </button>
+                  </div>
+                )}
+                {authRole === "admin" && (
+                  <div className="demoCredentials">
+                    <p>Demo — Admin, Apollo Clinic Delhi</p>
+                    <p><strong>{DEMO_ADMIN_EMAIL}</strong></p>
+                    <p><strong>{DEMO_ADMIN_PASSWORD}</strong></p>
+                    <button type="button" disabled={busy} onClick={() => { setEmail(DEMO_ADMIN_EMAIL); setPassword(DEMO_ADMIN_PASSWORD); }}>
                       Use Demo Credentials
                     </button>
                   </div>
@@ -282,38 +303,43 @@ export default function App() {
       </section>
 
       <nav className="tabBar surfaceCard">
-        <button
-          className={`tabBtn ${activeTab === "chat" ? "active" : ""}`}
-          onClick={() => setActiveTab("chat")}
-        >
-          {user.role === "doctor" ? "Chat & Reports" : "Chat"}
-        </button>
-        {user.role === "patient" && (
-          <button
-            className={`tabBtn ${activeTab === "appointments" ? "active" : ""}`}
-            onClick={() => setActiveTab("appointments")}
-          >
-            My Appointments
-          </button>
-        )}
-        {user.role === "doctor" && (
-          <button
-            className={`tabBtn ${activeTab === "queue" ? "active" : ""}`}
-            onClick={() => setActiveTab("queue")}
-          >
-            Today's Queue
-          </button>
-        )}
+        {/* Patient tabs */}
+        {user.role === "patient" && <>
+          <button className={`tabBtn ${activeTab === "chat" ? "active" : ""}`}         onClick={() => setActiveTab("chat")}>Chat</button>
+          <button className={`tabBtn ${activeTab === "appointments" ? "active" : ""}`} onClick={() => setActiveTab("appointments")}>My Appointments</button>
+        </>}
+
+        {/* Doctor tabs */}
+        {user.role === "doctor" && <>
+          <button className={`tabBtn ${activeTab === "chat" ? "active" : ""}`}     onClick={() => setActiveTab("chat")}>Chat & Reports</button>
+          <button className={`tabBtn ${activeTab === "queue" ? "active" : ""}`}    onClick={() => setActiveTab("queue")}>Today's Queue</button>
+          <button className={`tabBtn ${activeTab === "schedule" ? "active" : ""}`} onClick={() => setActiveTab("schedule")}>My Schedule</button>
+          <button className={`tabBtn ${activeTab === "history" ? "active" : ""}`}  onClick={() => setActiveTab("history")}>History</button>
+        </>}
+
+        {/* Admin tabs */}
+        {user.role === "admin" && <>
+          <button className={`tabBtn ${activeTab === "dashboard" ? "active" : ""}`}    onClick={() => setActiveTab("dashboard")}>Dashboard</button>
+          <button className={`tabBtn ${activeTab === "adminDoctors" ? "active" : ""}`} onClick={() => setActiveTab("adminDoctors")}>Doctors</button>
+          <button className={`tabBtn ${activeTab === "adminAppts" ? "active" : ""}`}   onClick={() => setActiveTab("adminAppts")}>Appointments</button>
+        </>}
       </nav>
 
       <section className="workspaceSection">
-        {activeTab === "chat" && <ChatPanel token={token} user={user} />}
-        {activeTab === "appointments" && user.role === "patient" && (
-          <AppointmentsPanel token={token} />
-        )}
-        {activeTab === "queue" && user.role === "doctor" && (
-          <DoctorQueue token={token} />
-        )}
+        {/* Patient */}
+        {activeTab === "chat"         && user.role === "patient" && <ChatPanel token={token} user={user} />}
+        {activeTab === "appointments" && user.role === "patient" && <AppointmentsPanel token={token} />}
+
+        {/* Doctor */}
+        {activeTab === "chat"     && user.role === "doctor" && <ChatPanel token={token} user={user} />}
+        {activeTab === "queue"    && user.role === "doctor" && <DoctorQueue token={token} />}
+        {activeTab === "schedule" && user.role === "doctor" && <DoctorSchedule token={token} />}
+        {activeTab === "history"  && user.role === "doctor" && <DoctorHistory token={token} />}
+
+        {/* Admin */}
+        {activeTab === "dashboard"   && user.role === "admin" && <AdminDashboard token={token} user={user} />}
+        {activeTab === "adminDoctors"&& user.role === "admin" && <AdminDoctors token={token} />}
+        {activeTab === "adminAppts"  && user.role === "admin" && <AdminAppointments token={token} />}
       </section>
     </main>
   );

@@ -312,10 +312,21 @@ def seed_data(db: Session) -> None:
     for entry in CLINIC_DATA:
         clinic_obj = clinic_cache[entry["name"]]
         for doctor_name, specialization in entry["doctors"]:
-            doctor = Doctor(name=doctor_name, specialization=specialization, clinic_id=clinic_obj.id)
-            db.add(doctor)
+            # Upsert: existing rows (from pre-city seed) get clinic_id assigned
+            doctor = db.scalar(select(Doctor).where(Doctor.name == doctor_name))
+            if doctor:
+                doctor.clinic_id = clinic_obj.id
+                doctor.specialization = specialization
+            else:
+                doctor = Doctor(name=doctor_name, specialization=specialization, clinic_id=clinic_obj.id)
+                db.add(doctor)
             db.flush()
-            _seed_availability(db, doctor.id)
+
+            # Add availability only if none exists yet
+            has_avail = db.scalar(select(DoctorAvailability).where(DoctorAvailability.doctor_id == doctor.id).limit(1))
+            if not has_avail:
+                _seed_availability(db, doctor.id)
+
             if doctor_name == "Dr. Ahuja":
                 ahuja_id = doctor.id
 

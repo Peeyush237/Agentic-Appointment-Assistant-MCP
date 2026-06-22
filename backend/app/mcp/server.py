@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta
+from difflib import get_close_matches
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -92,8 +93,52 @@ def _mcp_error(req_id: int | str | None, code: int, message: str) -> dict[str, A
     return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
 
 
+def _normalize_doctor_name(name: str) -> str:
+    """Strip 'Dr.'/'Dr' prefix and lowercase for fuzzy comparison."""
+    n = name.lower().strip()
+    for prefix in ("dr.", "dr"):
+        if n.startswith(prefix):
+            n = n[len(prefix):].strip()
+            break
+    return n
+
+
 def _get_doctor(db, doctor_name: str) -> Doctor | None:
-    return db.scalar(select(Doctor).where(Doctor.name.ilike(doctor_name)))
+    # 1. Exact case-insensitive match
+    doctor = db.scalar(select(Doctor).where(Doctor.name.ilike(doctor_name)))
+    if doctor:
+        return doctor
+
+    all_doctors = db.scalars(select(Doctor)).all()
+    if not all_doctors:
+        return None
+
+    # 2. Try with "Dr. " prefix if the input doesn't already have it
+    if not doctor_name.lower().strip().startswith("dr"):
+        doctor = db.scalar(select(Doctor).where(Doctor.name.ilike(f"Dr. {doctor_name.strip()}")))
+        if doctor:
+            return doctor
+
+    # 3. Fuzzy match on normalized names (prefix-stripped, lowercase)
+    norm_search = _normalize_doctor_name(doctor_name)
+    norm_names = [_normalize_doctor_name(d.name) for d in all_doctors]
+
+    # Exact normalized match
+    for i, n in enumerate(norm_names):
+        if n == norm_search:
+            return all_doctors[i]
+
+    # Close fuzzy match
+    matches = get_close_matches(norm_search, norm_names, n=1, cutoff=0.5)
+    if matches:
+        return all_doctors[norm_names.index(matches[0])]
+
+    # 4. Substring fallback (e.g. "ahuja" in "dr. ahuja")
+    for d in all_doctors:
+        if norm_search in d.name.lower():
+            return d
+
+    return None
 
 
 def _parse_range(date: str, period: str) -> tuple[datetime, datetime]:
@@ -360,7 +405,30 @@ async def _tool_get_current_datetime(arguments: dict[str, Any]) -> dict[str, Any
     return _current_time_payload()
 
 
+async def _tool_list_doctors(arguments: dict[str, Any]) -> dict[str, Any]:
+    with SessionLocal() as db:
+        doctors = db.scalars(select(Doctor)).all()
+        return {
+            "ok": True,
+            "doctors": [{"name": d.name, "specialization": d.specialization} for d in doctors],
+            "message": f"Found {len(doctors)} doctor(s)",
+        }
+
+
 TOOLS: dict[str, dict[str, Any]] = {
+    "list_doctors": {
+        "description": (
+            "List all available doctors in the clinic with their specializations. "
+            "Call this whenever the user mentions any doctor name (even partial or misspelled) "
+            "to find the exact canonical name before calling other tools."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+        "handler": _tool_list_doctors,
+    },
     "get_current_datetime": {
         "description": "Get current server date, time, day, and timezone",
         "inputSchema": {
@@ -444,6 +512,11 @@ TOOLS: dict[str, dict[str, Any]] = {
 PROMPTS: dict[str, str] = {
     "patient_agent_system": (
         "You are a patient appointment assistant. Always use MCP tools for availability and booking. "
+        "When the user mentions any doctor name — even partial, misspelled, or without 'Dr.' prefix — "
+        "call list_doctors first to get all available doctors, then identify the closest matching doctor "
+        "and use that exact canonical name in all subsequent tool calls. "
+        "If the user says 'I want to book an appointment' without specifying a doctor, call list_doctors "
+        "and present the available doctors to help them choose. "
         "If user asks current day/date/time (for example: what day is today, what time is it now), "
         "you MUST call get_current_datetime and answer from that tool result. "
         "Never claim any slot is available unless check_doctor_availability was called for that date/period. "

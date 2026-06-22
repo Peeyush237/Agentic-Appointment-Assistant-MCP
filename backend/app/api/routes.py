@@ -9,6 +9,7 @@ from app.api.schemas import AuthResponse
 from app.api.schemas import ChatCreateRequest
 from app.api.schemas import ChatMessageResponse
 from app.api.schemas import ChatRequest, ChatResponse, ChatThreadResponse
+from app.api.schemas import DoctorResponse
 from app.api.schemas import HealthResponse
 from app.api.schemas import LoginRequest
 from app.api.schemas import RegisterRequest
@@ -16,7 +17,7 @@ from app.api.schemas import UserResponse
 from app.core.auth import generate_token, hash_password, token_expiry, token_hash, verify_password
 from app.core.agent import agent
 from app.db.database import get_db
-from app.db.models import AuthToken, ChatMessage, ChatThread, User
+from app.db.models import AuthToken, ChatMessage, ChatThread, Doctor, User
 
 router = APIRouter(prefix="/api", tags=["api"])
 
@@ -72,6 +73,12 @@ def _thread_history(thread_messages: list[ChatMessage]) -> list[dict]:
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     return HealthResponse(status="ok")
+
+
+@router.get("/doctors", response_model=list[DoctorResponse])
+async def list_doctors(db: Session = Depends(get_db)):
+    doctors = db.scalars(select(Doctor).order_by(Doctor.name)).all()
+    return [DoctorResponse(id=d.id, name=d.name, specialization=d.specialization) for d in doctors]
 
 
 @router.post("/auth/register", response_model=AuthResponse)

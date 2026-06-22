@@ -60,3 +60,9 @@ class ChatMessageResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+
+
+class DoctorResponse(BaseModel):
+    id: int
+    name: str
+    specialization: str

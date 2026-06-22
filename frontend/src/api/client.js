@@ -101,3 +101,7 @@ export async function sendChat(token, payload) {
     token
   );
 }
+
+export async function getDoctors() {
+  return request("/doctors", { method: "GET" });
+}

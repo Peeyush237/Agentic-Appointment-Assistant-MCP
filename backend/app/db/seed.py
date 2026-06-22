@@ -410,7 +410,8 @@ def seed_data(db: Session) -> None:
         city.id: city for city in db.scalars(select(City)).all()
     }
 
-    for entry in CLINIC_DATA:
+    for clinic_position, entry in enumerate(CLINIC_DATA, start=1):
+        # clinic_position is 1-indexed and always stable regardless of DB sequence
         clinic_obj = all_clinics.get(entry["name"])
         if not clinic_obj:
             continue
@@ -430,19 +431,21 @@ def seed_data(db: Session) -> None:
                 doctor_profile_id=doctor.id,
             )
 
-        # Admin user per clinic
+        # Admin password uses clinic_position (stable list index) not DB-assigned ID,
+        # because PostgreSQL sequences advance even on rolled-back transactions,
+        # making DB IDs unpredictable across failed deployments.
         _upsert_user(
             db,
             email=admin_email(entry["name"]),
             full_name=f"Admin – {entry['name']}",
             role="admin",
-            password=admin_password(entry["name"], clinic_obj.id),
+            password=admin_password(entry["name"], clinic_position),
             clinic_id=clinic_obj.id,
         )
 
     db.commit()
 
-    # ── 5. Keep legacy demo account (doctor@clinic.local → Dr. Ahuja) ─────
+    # ── 5. Keep legacy demo account (doctor@clinic.local → Dr. Ahuja) ─────────
     ahuja = db.scalar(select(Doctor).where(Doctor.name == "Dr. Ahuja"))
     _upsert_user(
         db,

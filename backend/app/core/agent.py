@@ -100,6 +100,7 @@ class AgentOrchestrator:
         user_message: str,
         session_id: str | None = None,
         history: list[dict] | None = None,
+        context: dict | None = None,
     ) -> dict:
         if not self.client:
             return {
@@ -142,9 +143,13 @@ class AgentOrchestrator:
             }
         system_prompt = prompt_response["messages"][0]["content"]["text"]
 
+        context_lines = [self._server_time_context()]
+        if context:
+            context_lines.append("\n".join(f"{k}: {v}" for k, v in context.items()))
+
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "system", "content": self._server_time_context()},
+            {"role": "system", "content": "\n\n".join(context_lines)},
             *history,
             {"role": "user", "content": user_message},
         ]

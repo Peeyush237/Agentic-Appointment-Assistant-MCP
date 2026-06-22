@@ -12,11 +12,11 @@ import { getMe, login, logout as apiLogout, register } from "./api/client";
 
 const STORAGE_KEY = "appointment_auth";
 
-// Dr. Rao demo — Apollo Clinic, Delhi (ID=2 on first seed)
+// Dr. Rao — Apollo Clinic, Delhi (doctor ID=2 from original seed)
 const DEMO_DOCTOR_EMAIL    = "dr.rao@apolloclinicdelhi.local";
 const DEMO_DOCTOR_PASSWORD = "Delhi_ApolloClinicDelhi_2";
 
-// Admin demo — Apollo Clinic, Delhi (clinic ID=1)
+// Admin — Apollo Clinic, Delhi (position 1 in clinic list, always stable)
 const DEMO_ADMIN_EMAIL    = "admin@apolloclinicdelhi.local";
 const DEMO_ADMIN_PASSWORD = "admin_ApolloClinicDelhi_1";
 

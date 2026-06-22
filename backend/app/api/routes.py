@@ -280,9 +280,22 @@ async def chat(req: ChatRequest, user: User = Depends(_current_user), db: Sessio
     db.add(ChatMessage(thread_id=thread.id, sender="user", content=req.message))
     db.commit()
 
+    agent_context: dict = {}
+    if user.role == "doctor" and user.doctor_profile_id:
+        doctor = db.get(Doctor, user.doctor_profile_id)
+        if doctor:
+            clinic = db.get(Clinic, doctor.clinic_id) if doctor.clinic_id else None
+            agent_context = {
+                "Logged-in doctor": doctor.name,
+                "Doctor ID": doctor.id,
+                "Specialization": doctor.specialization,
+                "Clinic": clinic.name if clinic else "Unknown",
+            }
+
     result = await agent.run(
         role=user.role, user_message=req.message,
         session_id=thread.id, history=_thread_history(thread_messages),
+        context=agent_context or None,
     )
 
     for trace_item in result.get("tool_trace", []):

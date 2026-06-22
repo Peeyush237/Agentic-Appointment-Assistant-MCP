@@ -1,7 +1,9 @@
 import React from "react";
 import { useEffect, useState } from "react";
+import AppointmentsPanel from "./components/AppointmentsPanel";
 import ChatPanel from "./components/ChatPanel";
-import { getMe, login, register } from "./api/client";
+import DoctorQueue from "./components/DoctorQueue";
+import { getMe, login, logout as apiLogout, register } from "./api/client";
 
 const STORAGE_KEY = "appointment_auth";
 const DEMO_DOCTOR_EMAIL = "doctor@clinic.local";
@@ -91,6 +93,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [busy, setBusy] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [activeTab, setActiveTab] = useState("chat");
 
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -162,8 +165,10 @@ export default function App() {
   }
 
   function onLogout() {
+    apiLogout(token).catch(() => {});
     setToken("");
     setUser(null);
+    setActiveTab("chat");
     localStorage.removeItem(STORAGE_KEY);
   }
 
@@ -276,8 +281,39 @@ export default function App() {
         <PublicLinks />
       </section>
 
+      <nav className="tabBar surfaceCard">
+        <button
+          className={`tabBtn ${activeTab === "chat" ? "active" : ""}`}
+          onClick={() => setActiveTab("chat")}
+        >
+          {user.role === "doctor" ? "Chat & Reports" : "Chat"}
+        </button>
+        {user.role === "patient" && (
+          <button
+            className={`tabBtn ${activeTab === "appointments" ? "active" : ""}`}
+            onClick={() => setActiveTab("appointments")}
+          >
+            My Appointments
+          </button>
+        )}
+        {user.role === "doctor" && (
+          <button
+            className={`tabBtn ${activeTab === "queue" ? "active" : ""}`}
+            onClick={() => setActiveTab("queue")}
+          >
+            Today's Queue
+          </button>
+        )}
+      </nav>
+
       <section className="workspaceSection">
-        <ChatPanel token={token} user={user} />
+        {activeTab === "chat" && <ChatPanel token={token} user={user} />}
+        {activeTab === "appointments" && user.role === "patient" && (
+          <AppointmentsPanel token={token} />
+        )}
+        {activeTab === "queue" && user.role === "doctor" && (
+          <DoctorQueue token={token} />
+        )}
       </section>
     </main>
   );

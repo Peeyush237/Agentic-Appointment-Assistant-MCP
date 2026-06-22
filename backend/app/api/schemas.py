@@ -62,7 +62,55 @@ class HealthResponse(BaseModel):
     status: str
 
 
+# ── Geography ──────────────────────────────────────────────────────────────
+
+class CityResponse(BaseModel):
+    id: int
+    name: str
+    state: str
+
+
+class ClinicResponse(BaseModel):
+    id: int
+    name: str
+    city: str
+    address: str | None = None
+    phone: str | None = None
+
+
 class DoctorResponse(BaseModel):
     id: int
     name: str
     specialization: str
+    clinic_name: str | None = None
+    city: str | None = None
+
+
+# ── Appointments ───────────────────────────────────────────────────────────
+
+class AppointmentDetailResponse(BaseModel):
+    id: int
+    doctor_name: str
+    specialization: str | None = None
+    clinic_name: str | None = None
+    city: str | None = None
+    start_time: datetime
+    end_time: datetime
+    symptoms: str
+    status: str
+
+
+class AppointmentStatusUpdate(BaseModel):
+    status: str = Field(pattern="^(booked|completed|no_show|cancelled)$")
+
+
+# ── Doctor queue ───────────────────────────────────────────────────────────
+
+class QueueItemResponse(BaseModel):
+    id: int
+    patient_name: str
+    patient_email: str
+    symptoms: str
+    start_time: datetime
+    end_time: datetime
+    status: str

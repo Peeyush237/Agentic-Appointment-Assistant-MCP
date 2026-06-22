@@ -1,13 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { createChat, getChatMessages, getDoctors, listChats, sendChat } from "../api/client";
+import { createChat, getChatMessages, getCities, listChats, sendChat } from "../api/client";
 
-function computeSuggestions(items, doctors, role) {
+function computeSuggestions(items, cities, role) {
   if (role === "doctor") {
     return ["How many appointments today?", "Yesterday's summary", "Tomorrow's schedule?"];
   }
-
   if (items.length === 0) {
-    return ["Book an appointment", "Check doctor availability", "What are clinic hours?"];
+    return cities.slice(0, 4).map((c) => `I'm in ${c.name}`);
   }
 
   const lastAssistant = [...items].reverse().find((i) => i.from === "assistant");
@@ -16,20 +15,18 @@ function computeSuggestions(items, doctors, role) {
   if (lastText.includes("booked") || lastText.includes("confirmed") || lastText.includes("appointment id")) {
     return ["Book another appointment", "What should I bring?"];
   }
-
-  if (
-    lastText.includes("which doctor") ||
-    lastText.includes("choose a doctor") ||
-    lastText.includes("available doctors") ||
-    (lastText.includes("book") && doctors.length > 0 && !lastText.includes("booked"))
-  ) {
-    return doctors.map((d) => `Book with ${d.name}`);
+  if (lastText.includes("clinic") && (lastText.includes("found") || lastText.includes("available"))) {
+    return ["Morning slots please", "Afternoon slots please"];
   }
-
   if (lastText.includes("slot") || lastText.includes("available")) {
     return ["Morning slots please", "Afternoon slots please", "What about tomorrow?"];
   }
-
+  if (lastText.includes("doctor") || lastText.includes("dr.")) {
+    return ["Morning slots please", "Afternoon slots please", "Check availability"];
+  }
+  if (lastText.includes("city") || lastText.includes("where")) {
+    return cities.slice(0, 4).map((c) => `I'm in ${c.name}`);
+  }
   return ["Book an appointment", "Check availability", "Clinic hours?"];
 }
 
@@ -40,21 +37,19 @@ export default function ChatPanel({ token, user }) {
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
   const [loadingChats, setLoadingChats] = useState(true);
-  const [doctors, setDoctors] = useState([]);
+  const [cities, setCities] = useState([]);
   const [isListening, setIsListening] = useState(false);
 
   const chatEndRef = useRef(null);
   const recognitionRef = useRef(null);
-  const suggestions = computeSuggestions(items, doctors, user.role);
+  const suggestions = computeSuggestions(items, cities, user.role);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [items, busy]);
 
   useEffect(() => {
-    getDoctors()
-      .then(setDoctors)
-      .catch(() => {});
+    getCities().then(setCities).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -122,32 +117,27 @@ export default function ChatPanel({ token, user }) {
       alert("Voice input is not supported in this browser. Please use Chrome or Edge.");
       return;
     }
-
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
-
     const recognition = new SpeechRecognition();
     recognition.lang = "en-IN";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     recognitionRef.current = recognition;
-
     recognition.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      setMessage(transcript);
+      setMessage(e.results[0][0].transcript);
       setIsListening(false);
     };
     recognition.onerror = () => setIsListening(false);
     recognition.onend = () => setIsListening(false);
-
     setIsListening(true);
     recognition.start();
   }
 
-  const showDoctorCards = user.role === "patient" && items.length === 0 && doctors.length > 0;
+  const showCityCards = user.role === "patient" && items.length === 0 && cities.length > 0;
 
   return (
     <div className="workspaceGrid">
@@ -182,20 +172,19 @@ export default function ChatPanel({ token, user }) {
         </div>
 
         <div className="chatWindow">
-          {showDoctorCards && (
-            <div className="doctorCards">
-              <p className="hint">Choose a doctor to get started, or just type below:</p>
-              <div className="doctorCardRow">
-                {doctors.map((doc) => (
+          {showCityCards && (
+            <div className="cityCards">
+              <p className="hint">Where are you located? Pick a city to find nearby clinics:</p>
+              <div className="cityCardGrid">
+                {cities.map((city) => (
                   <button
-                    key={doc.id}
-                    className="doctorCard"
+                    key={city.id}
+                    className="cityCard"
                     disabled={busy}
-                    onClick={() => submitText(`I want to book an appointment with ${doc.name}`)}
+                    onClick={() => submitText(`I'm in ${city.name}`)}
                   >
-                    <div className="doctorCardName">{doc.name}</div>
-                    <div className="doctorCardSpec">{doc.specialization}</div>
-                    <div className="doctorCardAction">Book →</div>
+                    <div className="cityCardName">{city.name}</div>
+                    <div className="cityCardState">{city.state}</div>
                   </button>
                 ))}
               </div>
@@ -218,12 +207,9 @@ export default function ChatPanel({ token, user }) {
           {busy && (
             <div className="bubble assistant">
               <div className="bubbleMeta">Assistant</div>
-              <div className="typingIndicator">
-                <span /><span /><span />
-              </div>
+              <div className="typingIndicator"><span /><span /><span /></div>
             </div>
           )}
-
           <div ref={chatEndRef} />
         </div>
 
@@ -260,10 +246,7 @@ export default function ChatPanel({ token, user }) {
 
         {user.role === "doctor" && (
           <div className="quickActions">
-            <button
-              disabled={busy}
-              onClick={() => submitText("How many appointments do I have today and tomorrow?")}
-            >
+            <button disabled={busy} onClick={() => submitText("How many appointments do I have today and tomorrow?")}>
               Trigger Daily Summary
             </button>
           </div>

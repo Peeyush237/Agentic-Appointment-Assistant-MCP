@@ -1,10 +1,35 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
+
+
+class City(Base):
+    __tablename__ = "cities"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    state: Mapped[str] = mapped_column(String(100))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    clinics: Mapped[list["Clinic"]] = relationship(back_populates="city", cascade="all, delete-orphan")
+
+
+class Clinic(Base):
+    __tablename__ = "clinics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(200), index=True)
+    city_id: Mapped[int] = mapped_column(ForeignKey("cities.id", ondelete="CASCADE"), index=True)
+    address: Mapped[str] = mapped_column(String(300), nullable=True)
+    phone: Mapped[str] = mapped_column(String(20), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    city: Mapped["City"] = relationship(back_populates="clinics")
+    doctors: Mapped[list["Doctor"]] = relationship(back_populates="clinic")
 
 
 class Doctor(Base):
@@ -13,8 +38,29 @@ class Doctor(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     specialization: Mapped[str] = mapped_column(String(120))
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), nullable=True, index=True)
 
+    clinic: Mapped["Clinic"] = relationship(back_populates="doctors")
     appointments: Mapped[list["Appointment"]] = relationship(back_populates="doctor")
+    availability: Mapped[list["DoctorAvailability"]] = relationship(
+        back_populates="doctor", cascade="all, delete-orphan"
+    )
+
+
+class DoctorAvailability(Base):
+    """One row per (doctor, day_of_week, working window). Supports split sessions (morning + afternoon)."""
+
+    __tablename__ = "doctor_availability"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id", ondelete="CASCADE"), index=True)
+    day_of_week: Mapped[int] = mapped_column(Integer)  # 0 = Monday … 6 = Sunday
+    start_hour: Mapped[int] = mapped_column(Integer)
+    start_minute: Mapped[int] = mapped_column(Integer, default=0)
+    end_hour: Mapped[int] = mapped_column(Integer)
+    end_minute: Mapped[int] = mapped_column(Integer, default=0)
+
+    doctor: Mapped["Doctor"] = relationship(back_populates="availability")
 
 
 class User(Base):
@@ -25,6 +71,8 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(120))
     role: Mapped[str] = mapped_column(String(20), index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
+    # For doctor-role users: links this login account to a Doctor record
+    doctor_profile_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     tokens: Mapped[list["AuthToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
@@ -40,7 +88,7 @@ class AuthToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
 
-    user: Mapped[User] = relationship(back_populates="tokens")
+    user: Mapped["User"] = relationship(back_populates="tokens")
 
 
 class ChatThread(Base):
@@ -53,7 +101,7 @@ class ChatThread(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user: Mapped[User] = relationship(back_populates="chat_threads")
+    user: Mapped["User"] = relationship(back_populates="chat_threads")
     messages: Mapped[list["ChatMessage"]] = relationship(
         back_populates="thread",
         cascade="all, delete-orphan",
@@ -68,11 +116,10 @@ class ChatMessage(Base):
     thread_id: Mapped[str] = mapped_column(ForeignKey("chat_threads.id", ondelete="CASCADE"), index=True)
     sender: Mapped[str] = mapped_column(String(20), index=True)
     content: Mapped[str] = mapped_column(Text)
-    # Keep DB column nullable while avoiding Optional type parsing quirks on Python 3.14.
     tool_trace_json: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
-    thread: Mapped[ChatThread] = relationship(back_populates="messages")
+    thread: Mapped["ChatThread"] = relationship(back_populates="messages")
 
 
 class Appointment(Base):
@@ -80,6 +127,8 @@ class Appointment(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), index=True)
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), nullable=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     patient_name: Mapped[str] = mapped_column(String(120))
     patient_email: Mapped[str] = mapped_column(String(200), index=True)
     symptoms: Mapped[str] = mapped_column(String(200), default="general")
@@ -90,4 +139,4 @@ class Appointment(Base):
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    doctor: Mapped[Doctor] = relationship(back_populates="appointments")
+    doctor: Mapped["Doctor"] = relationship(back_populates="appointments")

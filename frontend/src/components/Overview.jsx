@@ -2,13 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import { getCities, getDoctors } from "../api/client";
 
-// ── Mermaid init ──────────────────────────────────────────────────────────────
 mermaid.initialize({
   startOnLoad: false,
   theme: "dark",
   themeVariables: {
     darkMode: true,
-    background: "#0f172a",
+    background: "#070c1a",
     primaryColor: "#1e3a5f",
     primaryTextColor: "#e2e8f0",
     primaryBorderColor: "#334155",
@@ -26,38 +25,38 @@ mermaid.initialize({
 
 const ARCH_DIAGRAM = `
 flowchart TB
-    subgraph Client["⚛️  React + Vite  ·  Vercel"]
+    subgraph Client["React + Vite  (Vercel)"]
         direction TB
-        P(["👤 Patient"])
-        D(["🩺 Doctor"])
-        A(["🏥 Admin"])
-        UI["Chat · Appointments · Voice Input\nQueue · Schedule · History\nDashboard · Doctor CRUD"]
+        P(["Patient"])
+        D(["Doctor"])
+        A(["Admin"])
+        UI["Chat / Appointments / Voice Input\\nQueue / Schedule / History\\nDashboard / Doctor CRUD"]
         P & D & A --> UI
     end
 
-    subgraph Server["🚀  FastAPI  ·  Render"]
+    subgraph Server["FastAPI  (Render)"]
         direction TB
-        REST["REST API\n/auth · /chat · /doctor · /admin · /cities"]
-        AGT["Agent Orchestrator\nTool-call loop  ·  max 6 iterations"]
+        REST["REST API\\n/auth  /chat  /doctor  /admin  /cities"]
+        AGT["Agent Orchestrator\\nTool-call loop  (max 6 iterations)"]
         REST --> AGT
     end
 
-    subgraph MCP["🔧  MCP Server  ·  /mcp"]
+    subgraph MCP["MCP Server  (/mcp)"]
         direction LR
-        T1["list_cities\nlist_clinics_in_city\nlist_doctors_in_clinic"]
-        T2["check_availability\nbook_appointment\ncancel_appointment"]
-        T3["list_patient_appts\nget_report_stats\nlist_doctors"]
+        T1["list_cities  /  list_clinics_in_city\\nlist_doctors_in_clinic  /  list_doctors"]
+        T2["check_availability\\nbook_appointment  /  cancel_appointment"]
+        T3["list_patient_appts\\nget_report_stats"]
     end
 
-    LLM["🤖  OpenAI  ·  gpt-4.1-mini\nTool calls · Symptom triage\nFuzzy doctor matching"]
+    LLM["OpenAI  (gpt-4.1-mini)\\nTool calls / Symptom triage / Fuzzy matching"]
 
-    subgraph DB["🗄️  PostgreSQL  ·  Neon  (free-tier, always-on)"]
+    subgraph DB["PostgreSQL  (Neon)"]
         direction LR
-        GEO["10 Cities → 20 Clinics → 60 Doctors\nDoctorAvailability  ·  80+ User accounts"]
-        DATA["Appointments · ChatThreads\nChatMessages · AuthTokens"]
+        GEO["10 Cities  20 Clinics  60 Doctors\\nDoctorAvailability  /  80+ User accounts"]
+        DATA["Appointments  /  ChatThreads\\nChatMessages  /  AuthTokens"]
     end
 
-    UI -- "Bearer token · JSON" --> REST
+    UI -- "Bearer token / JSON" --> REST
     AGT -- "tool_calls" --> MCP
     AGT <-- "chat completions" --> LLM
     MCP -- "SQLAlchemy ORM" --> DB
@@ -85,43 +84,38 @@ function MermaidChart({ chart }) {
   return <div ref={ref} className="mermaidWrap" />;
 }
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-const TECH = ["React 18", "FastAPI", "MCP", "OpenAI", "PostgreSQL", "Neon", "Render", "Vercel", "Twilio", "SQLAlchemy 2.0"];
+const TECH = ["React 18", "FastAPI", "MCP", "OpenAI", "PostgreSQL", "Neon", "Render", "Vercel", "SQLAlchemy 2.0", "Web Speech API"];
 
 const ROLES = [
   {
-    icon: "👤",
     title: "Patient",
     color: "rolePatient",
     features: [
       "Chat-based appointment booking",
       "City → Clinic → Doctor guided flow",
-      "Voice input (Web Speech API)",
+      "Voice input (Web Speech API, en-IN)",
       "Symptom triage to specialization",
-      "View & cancel appointments",
-      "Persistent chat threads",
+      "View and cancel appointments",
+      "Persistent chat threads across sessions",
     ],
   },
   {
-    icon: "🩺",
     title: "Doctor",
     color: "roleDoctor",
     features: [
-      "Today's queue with Done / No-Show",
-      "Clinical notes on appointments",
-      "Weekly schedule editor",
-      "Full appointment history + filters",
-      "LLM report assistant",
-      "Auto-provisioned login credentials",
+      "Today's queue with Done / No-Show actions",
+      "Clinical notes on individual appointments",
+      "Weekly schedule editor (day-level windows)",
+      "Full appointment history with filters",
+      "LLM report assistant with auto-notification",
+      "Auto-provisioned login on system startup",
     ],
   },
   {
-    icon: "🏥",
     title: "Admin",
     color: "roleAdmin",
     features: [
-      "Clinic dashboard (live stats)",
+      "Clinic dashboard with live stats",
       "Add / edit / deactivate doctors",
       "New doctor auto-gets schedule + login",
       "Filterable appointment log",
@@ -132,11 +126,11 @@ const ROLES = [
 ];
 
 const FLOW_STEPS = [
-  { icon: "🌆", label: "Pick City", sub: "10 Indian cities" },
-  { icon: "🏥", label: "Pick Clinic", sub: "2 per city" },
-  { icon: "🩺", label: "Pick Doctor", sub: "Fuzzy matching" },
-  { icon: "📅", label: "Check Slots", sub: "Data-driven" },
-  { icon: "✅", label: "Booked", sub: "Notification sent" },
+  { label: "Pick City", sub: "10 Indian cities" },
+  { label: "Pick Clinic", sub: "2 per city" },
+  { label: "Pick Doctor", sub: "Fuzzy name matching" },
+  { label: "Check Slots", sub: "Data-driven availability" },
+  { label: "Confirmed", sub: "Notification sent" },
 ];
 
 const MCP_TOOLS = [
@@ -159,8 +153,6 @@ const TAG_COLORS = {
   doctor: "tagDoctor",
   notify: "tagNotify",
 };
-
-// ── Main component ────────────────────────────────────────────────────────────
 
 export default function Overview({ onBack }) {
   const [stats, setStats] = useState({ cities: 0, clinics: 0, doctors: 0 });
@@ -189,13 +181,13 @@ export default function Overview({ onBack }) {
 
   return (
     <div className="overviewShell">
-      {/* ── Nav ── */}
+      {/* Nav */}
       <div className="overviewNav">
         <button className="overviewBackBtn" onClick={onBack}>← Back</button>
         <span className="pill">Live Overview</span>
       </div>
 
-      {/* ── Hero ── */}
+      {/* Hero */}
       <section className="overviewHero">
         <div className="overviewHeroBadges">
           <span className="pill">MCP</span>
@@ -216,7 +208,7 @@ export default function Overview({ onBack }) {
         </div>
         <div className="overviewLinks">
           <a href="https://agentic-appointment-assistant-mcp.vercel.app/" target="_blank" rel="noopener noreferrer" className="overviewLinkBtn primary">
-            🚀 Live Demo
+            Live Demo
           </a>
           <a href="https://github.com/Peeyush237/Agentic-Appointment-Assistant-MCP" target="_blank" rel="noopener noreferrer" className="overviewLinkBtn">
             GitHub
@@ -224,7 +216,7 @@ export default function Overview({ onBack }) {
         </div>
       </section>
 
-      {/* ── Live Stats ── */}
+      {/* Live Stats */}
       <section className="overviewSection">
         <h2 className="overviewSectionTitle">Live Scale</h2>
         <div className="overviewStats">
@@ -255,7 +247,7 @@ export default function Overview({ onBack }) {
         </div>
       </section>
 
-      {/* ── Architecture Diagram ── */}
+      {/* Architecture Diagram */}
       <section className="overviewSection">
         <h2 className="overviewSectionTitle">System Architecture</h2>
         <p className="overviewSectionSub">
@@ -266,7 +258,7 @@ export default function Overview({ onBack }) {
         </div>
       </section>
 
-      {/* ── Role Cards ── */}
+      {/* Role Cards */}
       <section className="overviewSection">
         <h2 className="overviewSectionTitle">Three Distinct Roles</h2>
         <p className="overviewSectionSub">
@@ -275,7 +267,6 @@ export default function Overview({ onBack }) {
         <div className="overviewRoleGrid">
           {ROLES.map((r) => (
             <div key={r.title} className={`overviewRoleCard surfaceCard ${r.color}`}>
-              <div className="overviewRoleIcon">{r.icon}</div>
               <h3 className="overviewRoleTitle">{r.title}</h3>
               <ul className="overviewRoleList">
                 {r.features.map((f) => (
@@ -287,7 +278,7 @@ export default function Overview({ onBack }) {
         </div>
       </section>
 
-      {/* ── Booking Flow ── */}
+      {/* Booking Flow */}
       <section className="overviewSection">
         <h2 className="overviewSectionTitle">LLM-Guided Booking Flow</h2>
         <p className="overviewSectionSub">
@@ -297,7 +288,6 @@ export default function Overview({ onBack }) {
           {FLOW_STEPS.map((step, i) => (
             <React.Fragment key={step.label}>
               <div className="overviewFlowStep surfaceCard">
-                <div className="overviewFlowIcon">{step.icon}</div>
                 <div className="overviewFlowLabel">{step.label}</div>
                 <div className="overviewFlowSub">{step.sub}</div>
               </div>
@@ -309,12 +299,11 @@ export default function Overview({ onBack }) {
         </div>
       </section>
 
-      {/* ── MCP Tools ── */}
+      {/* MCP Tools */}
       <section className="overviewSection">
         <h2 className="overviewSectionTitle">MCP Tool Layer</h2>
         <p className="overviewSectionSub">
-          The LLM calls these tools in a loop (max 6 iterations) to resolve, book,
-          and confirm appointments.
+          The LLM calls these tools in a loop (max 6 iterations) to resolve, book, and confirm appointments.
         </p>
         <div className="overviewToolGrid">
           {MCP_TOOLS.map((t) => (
@@ -326,21 +315,21 @@ export default function Overview({ onBack }) {
         </div>
       </section>
 
-      {/* ── Credential System ── */}
+      {/* Credential System */}
       <section className="overviewSection">
         <h2 className="overviewSectionTitle">Auto-Provisioned Credentials</h2>
         <p className="overviewSectionSub">
-          Every doctor and admin gets login credentials generated on startup — no manual setup.
+          Every doctor and admin gets login credentials generated deterministically on startup — no manual setup.
         </p>
         <div className="overviewCredGrid">
           <div className="overviewCredCard surfaceCard">
-            <div className="overviewCredRole">🩺 Doctor</div>
+            <div className="overviewCredRole">Doctor</div>
             <code className="overviewCredEmail">dr.&#123;name&#125;@&#123;clinicslug&#125;.local</code>
             <code className="overviewCredPass">&#123;City&#125;_&#123;ClinicSlug&#125;_&#123;DoctorID&#125;</code>
             <div className="hint overviewCredEx">e.g. dr.rao@apolloclinicdelhi.local</div>
           </div>
           <div className="overviewCredCard surfaceCard">
-            <div className="overviewCredRole">🏥 Admin</div>
+            <div className="overviewCredRole">Admin</div>
             <code className="overviewCredEmail">admin@&#123;clinicslug&#125;.local</code>
             <code className="overviewCredPass">admin_&#123;ClinicSlug&#125;_&#123;Position&#125;</code>
             <div className="hint overviewCredEx">e.g. admin@apolloclinicdelhi.local</div>
@@ -348,9 +337,14 @@ export default function Overview({ onBack }) {
         </div>
       </section>
 
-      {/* ── Footer ── */}
+      {/* Footer */}
       <footer className="overviewFooter">
-        <p className="hint">Built by Peeyush Mishra · <a href="https://github.com/Peeyush237" target="_blank" rel="noopener noreferrer">GitHub</a> · <a href="https://www.linkedin.com/in/peeyush-mishra-23187027b" target="_blank" rel="noopener noreferrer">LinkedIn</a></p>
+        <p className="hint">
+          Built by Peeyush Mishra &middot;{" "}
+          <a href="https://github.com/Peeyush237" target="_blank" rel="noopener noreferrer">GitHub</a>
+          {" "}&middot;{" "}
+          <a href="https://www.linkedin.com/in/peeyush-mishra-23187027b" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </p>
       </footer>
     </div>
   );

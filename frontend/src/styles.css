@@ -1452,8 +1452,8 @@ pre {
 /* ── Overview page shell ─────────────────────────────────────────────────── */
 .overviewShell {
   min-height: 100vh;
-  background: var(--bg);
-  color: var(--fg);
+  background: #070c1a;
+  color: #e2e8f0;
   font-family: "Barlow", sans-serif;
   padding: 0 0 60px;
   overflow-y: auto;
@@ -1467,7 +1467,7 @@ pre {
   border-bottom: 1px solid rgba(255,255,255,0.07);
   position: sticky;
   top: 0;
-  background: rgba(4, 9, 20, 0.92);
+  background: #070c1a;
   backdrop-filter: blur(12px);
   z-index: 10;
 }
@@ -1475,14 +1475,14 @@ pre {
 .overviewBackBtn {
   background: transparent;
   border: 1px solid rgba(255,255,255,0.15);
-  color: var(--muted);
+  color: #b8c3dd;
   padding: 6px 14px;
   border-radius: 10px;
   font-size: 13px;
   cursor: pointer;
   transition: color 120ms, border-color 120ms;
 }
-.overviewBackBtn:hover { color: var(--fg); border-color: rgba(255,255,255,0.35); }
+.overviewBackBtn:hover { color: #e2e8f0; border-color: rgba(255,255,255,0.35); }
 
 /* ── Hero ────────────────────────────────────────────────────────────────── */
 .overviewHero {
@@ -1504,16 +1504,13 @@ pre {
   font-family: "Anton", sans-serif;
   font-size: clamp(32px, 5vw, 56px);
   letter-spacing: 0.02em;
-  background: linear-gradient(135deg, #e2e8f0 30%, #818cf8);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #e2e8f0;
   margin: 0 0 16px;
 }
 
 .overviewSubtitle {
   font-size: 15px;
-  color: var(--muted);
+  color: #b8c3dd;
   line-height: 1.7;
   max-width: 640px;
   margin: 0 auto 24px;
@@ -1576,7 +1573,7 @@ pre {
 
 .overviewSectionSub {
   font-size: 14px;
-  color: var(--muted);
+  color: #b8c3dd;
   margin: 0 0 24px;
 }
 
@@ -1605,7 +1602,7 @@ pre {
 
 .overviewStatLabel {
   font-size: 12px;
-  color: var(--muted);
+  color: #b8c3dd;
   text-transform: uppercase;
   letter-spacing: 0.07em;
   margin-top: 6px;
@@ -1657,7 +1654,7 @@ pre {
 
 .overviewRoleList li {
   font-size: 13px;
-  color: var(--muted);
+  color: #b8c3dd;
   padding-left: 16px;
   position: relative;
 }
@@ -1690,7 +1687,7 @@ pre {
 
 .overviewFlowIcon  { font-size: 26px; margin-bottom: 6px; }
 .overviewFlowLabel { font-size: 13px; font-weight: 700; }
-.overviewFlowSub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.overviewFlowSub   { font-size: 11px; color: #b8c3dd; margin-top: 2px; }
 
 .overviewFlowArrow {
   font-size: 22px;

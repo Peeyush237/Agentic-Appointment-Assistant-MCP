@@ -8,6 +8,7 @@ import ChatPanel from "./components/ChatPanel";
 import DoctorHistory from "./components/DoctorHistory";
 import DoctorQueue from "./components/DoctorQueue";
 import DoctorSchedule from "./components/DoctorSchedule";
+import Overview from "./components/Overview";
 import { getMe, login, logout as apiLogout, register } from "./api/client";
 
 const STORAGE_KEY = "appointment_auth";
@@ -96,6 +97,7 @@ function PublicLinks() {
 }
 
 export default function App() {
+  const [showOverview, setShowOverview] = useState(false);
   const [authRole, setAuthRole] = useState("patient");
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -187,6 +189,10 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEY);
   }
 
+  if (showOverview) {
+    return <Overview onBack={() => setShowOverview(false)} />;
+  }
+
   if (!token || !user) {
     return (
       <main className="appShell authMode">
@@ -203,6 +209,9 @@ export default function App() {
                 A cinematic, role-based assistant for appointment booking and doctor reporting with continuous chat
                 history on every login.
               </p>
+              <button className="overviewCta" onClick={() => setShowOverview(true)}>
+                View Architecture &amp; Overview →
+              </button>
             </section>
 
             <section className="authCard surfaceCard">
